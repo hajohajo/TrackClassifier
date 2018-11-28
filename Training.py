@@ -1,3 +1,12 @@
+# Restrict to running on only one GPU on hefaistos
+import imp
+try:
+    imp.find_module('setGPU')
+    import setGPU
+except ImportError:
+    found = False
+# ////////////////////////////////////////////////
+
 import matplotlib
 matplotlib.use('Agg')
 
@@ -28,6 +37,7 @@ from joblib import dump
 from Models import create_model
 import Utils
 
+pd.set_option('display.max_columns', None)  
 # (Re)create folder for plot
 folders_ = ['plots', 'Graph', 'plots_MVADist_T5qqqqLL', 'plots_ROCs_T5qqqqLL', 'plots_MVADist_T1qqqqLL', 'plots_ROCs_T1qqqqLL', 'plots_MVADist_QCD_Flat', 'plots_ROCs_QCD_Flat']
 for dir in folders_:
@@ -52,15 +62,28 @@ test2_target = test2['trk_isTrue']
 
 data_train.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
 data_train.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-data_train.drop(['__array_index', 'index', 'trk_isTrue'], inplace=True, axis=1)
+data_train.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
 
 test1.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
 test1.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-test1.drop(['__array_index', 'index', 'trk_isTrue'], inplace=True, axis=1)
+test1.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
 
 test2.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
 test2.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-test2.drop(['__array_index', 'index', 'trk_isTrue'], inplace=True, axis=1)
+test2.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
+
+data_train = pd.get_dummies(data_train, columns=['trk_algo'])
+test1 = pd.get_dummies(test1, columns=['trk_algo'])
+test2 = pd.get_dummies(test2, columns=['trk_algo'])
+
+missing_col = set(data_train.columns) - set(test1.columns)
+for c in missing_col:
+	test1[c] = 0
+test1 = test1[data_train.columns]
+missing_col = set(data_train.columns) - set(test2.columns)
+for c in missing_col:
+        test2[c] = 0
+test2 = test2[data_train.columns]
 
 scaler = MinMaxScaler().fit(data_train.values)
 dump(scaler, 'scaler.pkl')
@@ -69,7 +92,7 @@ data_train = pd.DataFrame(scaler.transform(data_train), columns=data_train.colum
 test1 = pd.DataFrame(scaler.transform(test1), columns=test1.columns)
 test2 = pd.DataFrame(scaler.transform(test2), columns=test2.columns)
 
-model = create_model('Track_Classifier', data_train.shape)
+model = create_model('Track_classifier', data_train.shape)
 
 print model.summary()
 

@@ -12,6 +12,7 @@ gast==0.2.0
 gpustat==0.5.0
 grpcio==1.16.0
 h5py==2.8.0
+hickle==3.2.2
 html5lib==0.9999999
 joblib==0.13.0
 Keras==2.2.4
@@ -22,8 +23,10 @@ Markdown==3.0.1
 matplotlib==2.2.3
 mock==2.0.0
 numpy==1.15.4
+nvidia-ml-py==375.53.1
 pandas==0.23.4
 pbr==5.1.1
+pkg-resources==0.0.0
 protobuf==3.6.1
 psutil==5.4.8
 pyparsing==2.3.0
@@ -39,6 +42,6 @@ six==1.11.0
 sklearn==0.0
 subprocess32==3.5.3
 tensorboard==1.8.0
-tensorflow==1.8.0
+tensorflow-gpu==1.8.0
 termcolor==1.1.0
 Werkzeug==0.14.1
