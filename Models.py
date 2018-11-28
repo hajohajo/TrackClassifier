@@ -4,7 +4,7 @@ from keras.layers import Input, Dense, Dropout, Add
 
 def create_model(model_name, inputs_shape):
         if model_name is 'Track_classifier':
-            inp = Input(shape=inputs_shape)
+            inp = Input(shape=(inputs_shape[1],))
             dense = Dense(32, kernel_initializer='glorot_normal', activation='relu')(inp)
             dense = Dense(32, kernel_initializer='glorot_normal', activation='relu')(dense)
             dense = Dense(32, kernel_initializer='glorot_normal', activation='relu')(dense)
