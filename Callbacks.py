@@ -1,17 +1,17 @@
 import keras
 import matplotlib.pyplot as plt
 import numpy as np
-from Utils import Algo
+from Utils import Algo, _Enum
 from sklearn.metrics import roc_curve, auc
 
-# A handwavy solution to produce some plots for monitoring
-# the progress of the training every nth epoch. This is not
-# a very polished piece of code so take it with a grain of
-# salt and make better more clearer plotting scripts for
-# yourself.
+# A messy script for making monitoring plots.
+# Take it with a grain of salt as its very
+# unpolished.
+
 class Plot_test(keras.callbacks.Callback):
-    def __init__(self, test_data, folder):
+    def __init__(self, test_data, unscaled_test_data, folder):
         self.test_data = test_data
+	self.unscaled_test_data = unscaled_test_data
         self.folder = folder
         self.epochs = 0
 
@@ -21,9 +21,9 @@ class Plot_test(keras.callbacks.Callback):
         if self.epochs % 10 == 0:
                 steps = [99, 4, 23, 22, 5, 24, 7, 6, 8, 9, 10, 11]
                 test_x, test_y = (self.test_data[0].copy(), self.test_data[1].copy())
-                x_ = self.test_data
+                x_ = self.unscaled_test_data.copy()
                 Nentries=x_.shape[0]
-                pred_ = self.model.predict(test_x.drop(['trk_isTrue', 'trk_mva'], axis=1))
+                pred_ = self.model.predict(test_x.drop(['trk_mva','trk_isTrue'], axis=1))
                 x_['trk_mva_DNN'] = pred_
 
                 ind=0
@@ -35,6 +35,9 @@ class Plot_test(keras.callbacks.Callback):
                                 indices_ = (x_.trk_algo==step)
                                 data_pl=x_[indices_]
                                 y_=test_y[indices_]
+
+			if(data_pl.empty):
+				continue
 
                         true_trks=data_pl[(y_==1)]
                         fake_trks=data_pl[(y_==0)]
@@ -58,15 +61,15 @@ class Plot_test(keras.callbacks.Callback):
 
                         #mva vs. pT
                         #True tracks
-                        binning_pt=np.logspace(-1.0,3.0,num=40)
+                        binning_pt=np.logspace(-1.0,4.0,num=50)
                         indices_true = np.digitize(true_trks.trk_pt,binning_pt)
 
-                        weights_DNN = np.array([np.mean(true_trks[indices_true==x].trk_mva_DNN) for x in range(40)])
-                        err_DNN = np.array([np.std(true_trks[indices_true==x].trk_mva_DNN) for x in range(40)])
+                        weights_DNN = np.array([np.mean(true_trks[indices_true==x].trk_mva_DNN) for x in range(50)])
+                        err_DNN = np.array([np.std(true_trks[indices_true==x].trk_mva_DNN) for x in range(50)])
                         err_DNN[np.isnan(err_DNN)]= 1
                         err_DNN[err_DNN==0]= 1
-                        weights_MVA = np.array([np.mean(true_trks[indices_true==x].trk_mva) for x in range(40)])
-                        err_MVA = np.array([np.std(true_trks[indices_true==x].trk_mva) for x in range(40)])
+                        weights_MVA = np.array([np.mean(true_trks[indices_true==x].trk_mva) for x in range(50)])
+                        err_MVA = np.array([np.std(true_trks[indices_true==x].trk_mva) for x in range(50)])
                         err_MVA[np.isnan(err_MVA)]= 1
                         err_MVA[err_MVA==0]= 1
 
@@ -88,12 +91,12 @@ class Plot_test(keras.callbacks.Callback):
 
                         indices_fake = np.digitize(fake_trks.trk_pt,binning_pt)
 
-                        weights_DNN = np.array([np.mean(fake_trks[indices_fake==x].trk_mva_DNN) for x in range(40)])
-                        err_DNN = np.array([np.std(fake_trks[indices_fake==x].trk_mva_DNN) for x in range(40)])
+                        weights_DNN = np.array([np.mean(fake_trks[indices_fake==x].trk_mva_DNN) for x in range(50)])
+                        err_DNN = np.array([np.std(fake_trks[indices_fake==x].trk_mva_DNN) for x in range(50)])
                         err_DNN[np.isnan(err_DNN)]= 1
                         err_MVA[err_MVA==0] = 1
-                        weights_MVA = np.array([np.mean(fake_trks[indices_fake==x].trk_mva) for x in range(40)])
-                        err_MVA = np.array([np.std(fake_trks[indices_fake==x].trk_mva) for x in range(40)])
+                        weights_MVA = np.array([np.mean(fake_trks[indices_fake==x].trk_mva) for x in range(50)])
+                        err_MVA = np.array([np.std(fake_trks[indices_fake==x].trk_mva) for x in range(50)])
                         err_MVA[np.isnan(err_MVA)] = 1
                         err_MVA[err_MVA==0] = 1
 
@@ -112,11 +115,10 @@ class Plot_test(keras.callbacks.Callback):
                         plt.clf()
 
                         #ROC Curve
-
-                        fpr_BDT, tpr_BDT, thresholds = roc_curve(data_pl['trk_isTrue'],data_pl['trk_mva'])
+                        fpr_BDT, tpr_BDT, thresholds = roc_curve(data_pl['trk_isTrue'],data_pl['trk_mva'], pos_label=1)
                         frr_BDT = np.ones(len(fpr_BDT))-fpr_BDT
                         AUC_BDT=auc(frr_BDT,tpr_BDT)
-                        fpr_DNN, tpr_DNN, thresholds = roc_curve(data_pl['trk_isTrue'],data_pl['trk_mva_DNN'])
+                        fpr_DNN, tpr_DNN, thresholds = roc_curve(data_pl['trk_isTrue'],data_pl['trk_mva_DNN'], pos_label=1)
                         frr_DNN = np.ones(len(fpr_DNN))-fpr_DNN
                         AUC_DNN=auc(frr_DNN,tpr_DNN)
 
@@ -131,5 +133,3 @@ class Plot_test(keras.callbacks.Callback):
                         plt.grid(color='black',ls='--')
                         plt.savefig('plots_ROCs_'+self.folder+'/'+Algo.toString(step)+'_ROC_curve_epoch_'+str(self.epochs)+'.pdf')
                         plt.clf()
-
-

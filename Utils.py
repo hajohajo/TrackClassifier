@@ -1,18 +1,15 @@
-
-#Enumerator for algo
-
+# Poor-man enum class with string conversion
 class _Enum:
-    def __init__(self, **values):
-        self._reverse = {}
-        for key, value in values.iteritems():
-            setattr(self, key, value)
-            if value in self._reverse:
-                raise Exception("Value %s is already used for a key %s, tried to re-add it for key %s" % (
-                value, self._reverse[value], key))
-                self._reverse[value] = key
+     def __init__(self, **values):
+         self._reverse = {}
+         for key, value in values.iteritems():
+             setattr(self, key, value)
+             if value in self._reverse:
+                 raise Exception("Value %s is already used for a key %s, tried to re-add it for key %s" % (value, self._reverse[value], key))
+             self._reverse[value] = key
 
-    def toString(self, val):
-        return self._reverse[val]
+     def toString(self, val):
+         return self._reverse[val]
 
 Algo = _Enum(
      undefAlgorithm = 0, ctf = 1,
@@ -30,7 +27,7 @@ Algo = _Enum(
      muonSeededStepOutIn = 14,
      outInEcalSeededConv = 15, inOutEcalSeededConv = 16,
      nuclInter = 17,
-     standAloneMuon = 18, globalMuon = 19, cosmicStandAloneMuon = 20,
+     standAloneMuon = 18, globalMuon = 19, cosmicStandAloneMuon = 20, 
 cosmicGlobalMuon = 21,
      # Phase1
      highPtTripletStep = 22, lowPtQuadStep = 23, detachedQuadStep = 24,
@@ -61,3 +58,4 @@ cosmicGlobalMuon = 21,
      algoSize = 46,
      allSteps = 99
 )
+

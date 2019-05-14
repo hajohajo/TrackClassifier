@@ -30,8 +30,9 @@ import os
 import shutil
 from sklearn.model_selection import train_test_split
 from joblib import dump
-
+from keras.callbacks import ModelCheckpoint
 from Models import create_model
+from Callbacks import Plot_test
 
 pd.set_option('display.max_columns', None)  
 
@@ -91,6 +92,6 @@ model.fit(
     input_target,
     batch_size=32,
     validation_split=0.1,
-    epochs=500
+    epochs=500,
     callbacks=[checkpoint,plot_QCD, plot_T1qqqq, plot_T5qqqq]
 )
