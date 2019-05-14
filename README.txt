@@ -1,12 +1,10 @@
 An example repository to show how to train a DNN for track classification.
 
-The training is done using Keras python library, using TensorFlow as the backend for the heavy lifting. The required python packages are stored in "requirements.txt",
-and in principle command 
+The training is done using Keras python library, using TensorFlow as the backend for the heavy lifting. The required python packages are stored in "requirements.txt", and in principle command 
 
 "pip install -r requirements.txt"
 
-should take care of installing the needed packages. This does require however a working installation of pyroot (root-pandas package relies on it) for reading and writing
-ROOT files.
+should take care of installing the needed packages. This does require however a working installation of pyroot (root-pandas package relies on it) for reading and writing ROOT files. Use of virtual environments in order not to mess up whatever python packages there already are is strictly recommended.
 
 Training.py
 ------------
