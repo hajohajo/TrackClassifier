@@ -4,6 +4,11 @@ import numpy as np
 from Utils import Algo
 from sklearn.metrics import roc_curve, auc
 
+# A handwavy solution to produce some plots for monitoring
+# the progress of the training every nth epoch. This is not
+# a very polished piece of code so take it with a grain of
+# salt and make better more clearer plotting scripts for
+# yourself.
 class Plot_test(keras.callbacks.Callback):
     def __init__(self, test_data, folder):
         self.test_data = test_data

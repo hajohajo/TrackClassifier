@@ -1,4 +1,4 @@
-# Restrict to running on only one GPU on hefaistos
+# Restrict to running on only one GPU as otherwise TensorFlow hogs them all
 import imp
 try:
     imp.find_module('setGPU')
@@ -28,18 +28,15 @@ import sys
 import re
 import os
 import shutil
-import hickle as hkl
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.utils import class_weight
 from joblib import dump
 
 from Models import create_model
-import Utils
 
 pd.set_option('display.max_columns', None)  
+
 # (Re)create folder for plot
-folders_ = ['plots', 'Graph', 'plots_MVADist_T5qqqqLL', 'plots_ROCs_T5qqqqLL', 'plots_MVADist_T1qqqqLL', 'plots_ROCs_T1qqqqLL', 'plots_MVADist_QCD_Flat', 'plots_ROCs_QCD_Flat']
+folders_ = ['plots_MVADist_T5qqqq', 'plots_ROCs_T5qqqq', 'plots_MVADist_T1qqqq', 'plots_ROCs_T1qqqq', 'plots_MVADist_QCD', 'plots_ROCs_QCD']
 for dir in folders_:
         if os.path.exists(dir):
             shutil.rmtree(dir)
@@ -48,59 +45,52 @@ for dir in folders_:
 # Lock the random seed for reproducibility
 np.random.seed = 7
 
+# Only read the necessary variables from the trackingNtuples to conserve memory during training
 read = ['trk_isTrue','trk_mva','trk_pt','trk_eta','trk_lambda','trk_dxy','trk_dz','trk_dxyClosestPV','trk_dzClosestPV',
         'trk_ptErr','trk_etaErr','trk_lambdaErr','trk_dxyErr','trk_dzErr','trk_nChi2','trk_ndof','trk_nLost',
         'trk_nPixel','trk_nStrip','trk_nPixelLay','trk_nStripLay','trk_n3DLay','trk_nLostLay','trk_algo']
 
-data_train = read_root('QCD_flat_small.root', columns=read)
-test1 = read_root('T1qqqqLL.root', columns=read)
-test2 = read_root('T5qqqqLL.root', columns=read)
+# Make sure the columns of the input dataframes are in the same order as they are when you
+# perform the inference using the trained network in the CMSSW
+input_train = read_root('QCD_flat_small.root', columns=read)[read]
 
-data_target = data_train['trk_isTrue']
-test1_target = test1['trk_isTrue']
-test2_target = test2['trk_isTrue']
+# Split a piece of the training sample out for making validation plots.
+# Reset indices in the dataframes afterwards to keep them neat looking.
+input_train, test_QCD = train_test_split(input_train, shuffle=True, test_size=0.1)
+input_train.reset_index(drop=True, inplace=True)
+test_QCD.reset_index(drop=True, inplace=True)
 
-data_train.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
-data_train.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-data_train.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
+# Additional data from different event types to produce monitoring plots
+test_T1qqqq = read_root('T1qqqqLL.root', columns=read)[read]
+test_T5qqqq = read_root('T5qqqqLL.root', columns=read)[read]
 
-test1.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
-test1.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-test1.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
+input_target = input_train['trk_isTrue']
+test_QCD_target = test_QCD['trk_isTrue']
+test_T1qqqq_target = test_T1qqqq['trk_isTrue']
+test_T5qqqq_target = test_T5qqqq['trk_isTrue']
 
-test2.rename(columns={'trk_dzClosestPV': 'trk_dzClosestPVClamped'}, inplace=True)
-test2.loc[:, 'trk_dzClosestPVClamped'] = np.clip(data_train.loc[:, 'trk_dzClosestPVClamped'], a_min=-2.0, a_max=2.0)
-test2.drop(['trk_isTrue','trk_mva'], inplace=True, axis=1)
+# Drop the trk_isTrue and trk_mva variables from the training input.
+# They are only needed for the monitoring plots
+input_train.drop(['trk_isTrue', 'trk_mva'], inplace=True, axis=1)
 
-data_train = pd.get_dummies(data_train, columns=['trk_algo'])
-test1 = pd.get_dummies(test1, columns=['trk_algo'])
-test2 = pd.get_dummies(test2, columns=['trk_algo'])
-
-missing_col = set(data_train.columns) - set(test1.columns)
-for c in missing_col:
-	test1[c] = 0
-test1 = test1[data_train.columns]
-missing_col = set(data_train.columns) - set(test2.columns)
-for c in missing_col:
-        test2[c] = 0
-test2 = test2[data_train.columns]
-
-
-scaler = MinMaxScaler().fit(data_train.values)
-dump(scaler, 'scaler.pkl')
-
-data_train = pd.DataFrame(scaler.transform(data_train), columns=data_train.columns)
-test1 = pd.DataFrame(scaler.transform(test1), columns=test1.columns)
-test2 = pd.DataFrame(scaler.transform(test2), columns=test2.columns)
-
-model = create_model('Track_classifier', data_train.shape)
-
+# Model is defined in the Models.py file
+model = create_model('Track_classifier', input_train.shape)
 print model.summary()
 
+# Callback to save the model if the validation loss improves
+checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', save_best_only=True)
+
+# Plotting scripts imported from Callbacks.py
+plot_QCD = Plot_test((test_QCD, test_QCD_target), test_QCD, 'QCD')
+plot_T1qqqq = Plot_test((test_T1qqqq, test_T1qqqq_target), test_T1qqqq, 'T1qqqq')
+plot_T5qqqq = Plot_test((test_T5qqqq, test_T5qqqq_target), test_T5qqqq, 'T5qqqq')
+
+# The main function that starts the training 
 model.fit(
-    data_train,
-    data_target,
+    input_train,
+    input_target,
     batch_size=32,
     validation_split=0.1,
     epochs=500
+    callbacks=[checkpoint,plot_QCD, plot_T1qqqq, plot_T5qqqq]
 )
